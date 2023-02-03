@@ -1,0 +1,1 @@
+$KAFKA_HOME/bin/kafka-console-consumer.sh --topic notifications --bootstrap-server localhost:9092 --from-beginning
