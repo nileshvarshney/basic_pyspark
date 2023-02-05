@@ -1,60 +1,33 @@
-import sys
-
 from pyspark.sql import SparkSession
+from utils.logger import Log4j
+from utils.transformation import calculate_percentage_change, read_streaming_data
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: spark-submit happiness.py <host> <port>", file=sys.stderr)
-        exit(-1)
-
-    host = sys.argv[1]
-    port = sys.argv[2]
-
-    # open spark session
-    spark = SparkSession\
-        .builder\
-        .appName("World Happiness")\
-        .master("local[*]")\
-        .config("spark.sql.shuffle.partitions", 3)\
-        .config("spark.streaming.stopGracefullyOnShutdown","true")\
+    spark = SparkSession.builder\
+        .master("local[3]") \
+        .config("spark.sql.shuffle.partitions", 3) \
         .config("spark.sql.streaming.schemaInference", "true")\
-        .getOrCreate()
+        .config("spark.streaming.stopGracefullyOnShutdown", "true")\
+        .appName("stock_price").getOrCreate()
 
-    spark.sparkContext.setLogLevel('ERROR')
+    logger = Log4j(spark)
 
-    readStream = spark\
-        .readStream\
-        .format('socket')\
-        .option('host', host)\
-        .option('port', port)\
-        .load()
+    streaming_df = read_streaming_data(spark, filepath="data/stock_data/*.csv", max_file_per_trigger=3)
 
-    # split the input string to exttact the country, region and happieness score
-    readStream_df = readStream.selectExpr("split(value, ',')[0] as Country",\
-                                 "split(value, ',')[1] as Region",\
-                                 "split(value, ',')[2] as HappinessScore"\
-        )
+    logger.info('input data schema' + streaming_df.schema.simpleString())
 
-    readStream_df.createOrReplaceTempView("happiness")
+    final_df = calculate_percentage_change(streaming_df)
 
-    sql_stmt = """
-                    SELECT 
-                        Region, 
-                        AVG(HappinessScore) as Avg_Happiness_Score
-                    FROM happiness
-                    GROUP BY Region
-                """
-
-    
-    averageScore = spark.sql(sql_stmt)    
-
-    query = averageScore\
-        .writeStream\
+    query = final_df.writeStream\
+        .outputMode("complete")\
         .format('console')\
-        .outputMode('complete')\
-        .start()\
-        .awaitTermination()
+        .trigger(processingTime="1 minute")\
+        .start()
+
+    logger.info('stock_price processing end..')
+    query.awaitTermination()
+
 
 if __name__ == "__main__":
     main()

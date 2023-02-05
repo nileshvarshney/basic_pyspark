@@ -1,0 +1,2 @@
+23/02/04 18:45:04 INFO stock_price: input data schemastruct<Date:timestamp,Open:double,High:double,Low:double,Close:double,Adj Close:double,Volume:int,Name:string>
+23/02/04 18:45:05 INFO stock_price: stock_price processing end..
