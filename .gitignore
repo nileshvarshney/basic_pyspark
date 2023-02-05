@@ -5,5 +5,7 @@ structured_streaming/.DS_Store
 structured_streaming/.idea
 .pytest_cache
 structured_streaming/.pytest_cache
-structured_streaming/app-logs
 structured_streaming/__pycache__
+.log
+__pycache__
+.pytest_cache
